@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Replicate from "replicate";
 import pinataSDK from "@pinata/sdk";
 import { Readable } from "stream";
+import { supabase } from "../../../lib/supabase";
 
 const replicate = new Replicate({
   // expects REPLICATE_API_TOKEN in env
@@ -207,8 +208,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Store in Supabase database
+    const { error: dbError } = await supabase
+      .from('beasts')
+      .insert({
+        request_id: mintBody.requestId,
+        name,
+        description,
+        image_ipfs_uri: imageIpfsUri,
+        owner_address: OWNER_WALLET,
+        status: 'in_queue',
+        traits,
+        nft_address: mintJson.response?.address || null,
+        nft_index: mintJson.response?.index || null,
+        getgems_url: mintJson.response?.url || null,
+      });
+
+    if (dbError) {
+      console.error('Database insert error:', dbError);
+    }
+
     return NextResponse.json({
       success: true,
+      requestId: mintBody.requestId,
       name,
       description,
       traits,
