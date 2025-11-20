@@ -6,14 +6,15 @@ const GETGEMS_AUTHORIZATION = process.env.GETGEMS_AUTHORIZATION ?? "";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { statusid: string } }
+  { params }: { params: Promise<{ statusid: string }> }
 ) {
   try {
     if (!GETGEMS_COLLECTION || !GETGEMS_AUTHORIZATION) {
       return NextResponse.json({ error: "Missing GetGems configuration" }, { status: 500 });
     }
 
-    const requestId = params.statusid;
+    const { statusid } = await params;
+    const requestId = statusid;
     
     if (!requestId) {
       return NextResponse.json({ error: "Missing request ID" }, { status: 400 });

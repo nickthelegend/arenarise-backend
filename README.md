@@ -55,7 +55,13 @@ Transfer NFTs between TON wallets using TIP-004 standard.
 
 **Request:**
 ```bash
+# Local
 curl -X POST http://localhost:3000/api/send \
+  -H "Content-Type: application/json" \
+  -d '{"nftAddress":"kQARsscn0oab2vMkhZpg8xDZXTOUfwMWXPKeflBWylacwRAY","toAddress":"0QBZLTG194NM_tKRI7C_D5fJomCGS7zgjJKe051uomBmn7BA"}'
+
+# Production
+curl -X POST https://your-app.vercel.app/api/send \
   -H "Content-Type: application/json" \
   -d '{"nftAddress":"kQARsscn0oab2vMkhZpg8xDZXTOUfwMWXPKeflBWylacwRAY","toAddress":"0QBZLTG194NM_tKRI7C_D5fJomCGS7zgjJKe051uomBmn7BA"}'
 ```
@@ -77,7 +83,13 @@ Send RISE jetton tokens between wallets using TIP-003 standard.
 
 **Request:**
 ```bash
+# Local
 curl -X POST http://localhost:3000/api/send/rise \
+  -H "Content-Type: application/json" \
+  -d '{"userWallet":"0QBZLTG194NM_tKRI7C_D5fJomCGS7zgjJKe051uomBmn7BA","amount":1}'
+
+# Production
+curl -X POST https://your-app.vercel.app/api/send/rise \
   -H "Content-Type: application/json" \
   -d '{"userWallet":"0QBZLTG194NM_tKRI7C_D5fJomCGS7zgjJKe051uomBmn7BA","amount":1}'
 ```
@@ -99,7 +111,11 @@ Check the minting status of an NFT using the request ID.
 
 **Request:**
 ```bash
+# Local
 curl http://localhost:3000/api/mint/status/1703123456789
+
+# Production
+curl https://your-app.vercel.app/api/mint/status/1703123456789
 ```
 
 ## 🛠 Technology Stack
@@ -184,10 +200,18 @@ npm run dev
 ```
 
 4. **Access APIs**
+
+**Local Development:**
 - Mint: `POST http://localhost:3000/api/mint`
 - Transfer NFT: `POST http://localhost:3000/api/send`
 - Transfer RISE: `POST http://localhost:3000/api/send/rise`
 - Check Status: `GET http://localhost:3000/api/mint/status/[id]`
+
+**Production (Vercel):**
+- Mint: `POST https://your-app.vercel.app/api/mint`
+- Transfer NFT: `POST https://your-app.vercel.app/api/send`
+- Transfer RISE: `POST https://your-app.vercel.app/api/send/rise`
+- Check Status: `GET https://your-app.vercel.app/api/mint/status/[id]`
 
 ## 📝 Recent Transactions
 
