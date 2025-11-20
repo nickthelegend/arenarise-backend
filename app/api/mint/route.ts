@@ -19,16 +19,65 @@ const GETGEMS_COLLECTION = process.env.GETGEMS_COLLECTION ?? ""; // e.g. EQAz...
 const GETGEMS_AUTHORIZATION = process.env.GETGEMS_AUTHORIZATION ?? ""; // token string as required by their API
 const OWNER_WALLET = process.env.OWNER_ADDRESS ?? ""; // your wallet: 0QBZLTG194NM_...
 
-// Default base prompt (user-provided)
-const BASE_PROMPT =
-  'Create a high-detail pixel art dragon with no background. Render a perfect, symmetric side view of the entire dragon, showcasing its elongated body, detailed scales, and vibrant colors in crisp pixel style. The image should capture the dragon in full profile with clean lines and a balanced composition, emphasizing its majestic form without any additional elements.';
+// Random beast generation data
+const BEAST_TYPES = ['Dragon', 'Phoenix', 'Griffin', 'Hydra', 'Wyvern', 'Basilisk', 'Chimera', 'Manticore'];
+const COLORS = ['Crimson', 'Azure', 'Golden', 'Emerald', 'Shadow', 'Crystal', 'Flame', 'Frost'];
+const ELEMENTS = ['Fire', 'Ice', 'Lightning', 'Earth', 'Wind', 'Dark', 'Light', 'Poison'];
+const TIERS = ['Common', 'Rare', 'Epic', 'Legendary', 'Mythic'];
+
+function getRandomElement<T>(array: T[]): T {
+  return array[Math.floor(Math.random() * array.length)];
+}
+
+function generateRandomBeast() {
+  const beastType = getRandomElement(BEAST_TYPES);
+  const color = getRandomElement(COLORS);
+  const element = getRandomElement(ELEMENTS);
+  const tier = getRandomElement(TIERS);
+  
+  const name = `${color} ${beastType}`;
+  const description = `A ${tier.toLowerCase()} ${element.toLowerCase()} beast with incredible power`;
+  
+  // Generate random stats based on tier
+  const tierMultiplier = TIERS.indexOf(tier) + 1;
+  const baseAttack = Math.floor(Math.random() * 50) + 30;
+  const baseDefense = Math.floor(Math.random() * 50) + 30;
+  const baseSpeed = Math.floor(Math.random() * 50) + 30;
+  
+  const traits = [
+    { trait_type: "Attack", value: (baseAttack * tierMultiplier).toString() },
+    { trait_type: "Defense", value: (baseDefense * tierMultiplier).toString() },
+    { trait_type: "Speed", value: (baseSpeed * tierMultiplier).toString() },
+    { trait_type: "Element", value: element },
+    { trait_type: "Tier", value: tier },
+  ];
+  
+  const prompt = `Create a high-detail pixel art ${color.toLowerCase()} ${beastType.toLowerCase()} with ${element.toLowerCase()} powers. Render a perfect, symmetric side view with detailed scales, vibrant ${color.toLowerCase()} colors, and ${element.toLowerCase()} effects in crisp pixel style. No background, clean lines, majestic ${tier.toLowerCase()} beast.`;
+  
+  return { name, description, traits, prompt };
+}
 
 async function bufferFromReplicateOutput(output: any): Promise<Buffer> {
-  // Many replicate model runs return a URL string (or an array with a URL).
-  // If output is a URL, fetch it; if it's a Buffer/Uint8Array return it.
   if (!output) throw new Error("No output from Replicate");
 
-  // If replicate returns an array like [{...}, ...] try to extract URL
+  // Handle new Replicate SDK format with url() method
+  if (output.url && typeof output.url === "function") {
+    const imageUrl = output.url();
+    const res = await fetch(imageUrl);
+    if (!res.ok) throw new Error(`Failed to download image: ${res.status}`);
+    const ab = await res.arrayBuffer();
+    return Buffer.from(ab);
+  }
+
+  // Legacy handling for direct URL strings
+  if (typeof output === "string") {
+    const res = await fetch(output);
+    if (!res.ok) throw new Error(`Failed to download image: ${res.status}`);
+    const ab = await res.arrayBuffer();
+    return Buffer.from(ab);
+  }
+
+  // Handle arrays
   if (Array.isArray(output)) {
     const first = output[0];
     if (typeof first === "string") {
@@ -37,34 +86,13 @@ async function bufferFromReplicateOutput(output: any): Promise<Buffer> {
       const ab = await res.arrayBuffer();
       return Buffer.from(ab);
     }
-    // if it's an object with a url property
-    if (first?.url && typeof first.url === "string") {
-      const res = await fetch(first.url);
+    if (first?.url && typeof first.url === "function") {
+      const imageUrl = first.url();
+      const res = await fetch(imageUrl);
       if (!res.ok) throw new Error(`Failed to download image: ${res.status}`);
       const ab = await res.arrayBuffer();
       return Buffer.from(ab);
     }
-  }
-
-  if (typeof output === "string") {
-    // treat as URL
-    const res = await fetch(output);
-    if (!res.ok) throw new Error(`Failed to download image: ${res.status}`);
-    const ab = await res.arrayBuffer();
-    return Buffer.from(ab);
-  }
-
-  // If replicate returned raw bytes (rare), handle Uint8Array
-  if (output instanceof Uint8Array || (output?.data && output.data instanceof Uint8Array)) {
-    return Buffer.from(output instanceof Uint8Array ? output : output.data);
-  }
-
-  // fallback: try JSON -> url
-  if (output?.url) {
-    const res = await fetch(output.url);
-    if (!res.ok) throw new Error(`Failed to download image: ${res.status}`);
-    const ab = await res.arrayBuffer();
-    return Buffer.from(ab);
   }
 
   throw new Error("Could not interpret replicate output");
@@ -91,18 +119,6 @@ async function uploadBufferToPinata(buffer: Buffer, fileName: string) {
   return result;
 }
 
-async function pinMetadata(metadata: Record<string, any>) {
-  const result = await pinata.pinJSONToIPFS(metadata, {
-    pinataMetadata: {
-      name: metadata.name ?? "nft-metadata",
-    },
-    pinataOptions: {
-      cidVersion: 1 as const,
-    },
-  });
-  return result;
-}
-
 export async function POST(request: NextRequest) {
   try {
     if (!process.env.REPLICATE_API_TOKEN) {
@@ -117,19 +133,9 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    // Accept optional inputs, otherwise use defaults
-    const customPrompt = typeof body?.prompt === "string" ? body.prompt : "";
-    const prompt = `${BASE_PROMPT} ${customPrompt}`.trim();
-
-    const name = body?.name ?? `Beast #${Date.now()}`;
-    const description = body?.description ?? "A procedurally generated beast";
-    // traits either provided or default provided set
-    const traits = body?.traits ?? [
-      { trait_type: "Attack", value: 120, display_type: "number" },
-      { trait_type: "Defense", value: 80, display_type: "number" },
-      { trait_type: "Speed", value: 65, display_type: "number" },
-      { trait_type: "Tier", value: "Legendary" },
-    ];
+    // Generate random beast (ignore user input for now)
+    const randomBeast = generateRandomBeast();
+    const { name, description, traits, prompt } = randomBeast;
 
     // --- 1) Generate image via Replicate ---
     // Example model: black-forest-labs/flux-1.1-pro (user mentioned). The model input shape can vary.
@@ -154,26 +160,14 @@ export async function POST(request: NextRequest) {
     const imageCid = pinFileResult.IpfsHash;
     const imageIpfsUri = `ipfs://${imageCid}`;
 
-    // --- 3) Pin metadata JSON that includes the ipfs image link and attributes ---
-    const metadata = {
-      name,
-      description,
-      image: imageIpfsUri,
-      attributes: traits,
-    };
-
-    const pinMetadataResult = await pinMetadata(metadata);
-    const metadataCid = pinMetadataResult.IpfsHash;
-    const metadataIpfsUri = `ipfs://${metadataCid}`;
-
-    // --- 4) Call GetGems mint endpoint ---
+    // --- 3) Call GetGems mint endpoint ---
     const mintUrl = `${GETGEMS_BASE}/minting/${GETGEMS_COLLECTION}`;
     const mintBody = {
       requestId: Date.now().toString(),
       ownerAddress: OWNER_WALLET,
       name,
       description,
-      image: metadataIpfsUri, // send metadata or image url depending on GetGems expectation; sending metadata is common
+      image: imageIpfsUri,
       attributes: traits,
     };
 
@@ -196,13 +190,18 @@ export async function POST(request: NextRequest) {
     }
 
     if (!mintRes.ok) {
+      console.error("GetGems mint failed:", {
+        status: mintRes.status,
+        statusText: mintRes.statusText,
+        response: mintJson,
+        requestBody: mintBody
+      });
       return NextResponse.json(
         {
           success: false,
           error: `GetGems mint failed (${mintRes.status})`,
           details: mintJson,
           imageIpfsUri,
-          metadataIpfsUri,
         },
         { status: 500 }
       );
@@ -214,11 +213,14 @@ export async function POST(request: NextRequest) {
       description,
       traits,
       imageIpfsUri,
-      metadataIpfsUri,
       mintResponse: mintJson,
     });
   } catch (error) {
-    console.error("Route error:", error);
+    console.error("Route error:", {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      cause: error instanceof Error ? error.cause : undefined
+    });
     return NextResponse.json(
       {
         success: false,
