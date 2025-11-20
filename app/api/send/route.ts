@@ -49,6 +49,15 @@ export async function POST(request: NextRequest) {
     const contract = client.open(wallet);
     const seqno = await contract.getSeqno();
     console.log("Current seqno:", seqno);
+    
+    // Check wallet balance
+    const balance = await contract.getBalance();
+    console.log("Wallet balance:", balance.toString(), "nanoTON");
+    console.log("Wallet balance:", (Number(balance) / 1e9).toFixed(4), "TON");
+    
+    if (Number(balance) < 100000000) { // Less than 0.1 TON
+      throw new Error(`Insufficient wallet balance: ${(Number(balance) / 1e9).toFixed(4)} TON`);
+    }
 
     // -------- BUILD NFT TRANSFER BODY (TIP-004) --------
     console.log("Building NFT transfer message...");
@@ -65,13 +74,13 @@ export async function POST(request: NextRequest) {
     // -------- PREPARE INTERNAL MESSAGE --------
     const msg = internal({
       to: Address.parse(nftAddress),
-      value: "0.05", // enough gas for NFT transfer
+      value: "0.1", // increased gas for NFT transfer
       body: nftTransfer,
       bounce: false,
     });
     console.log("Internal message prepared:", {
       to: nftAddress,
-      value: "0.05 TON",
+      value: "0.1 TON",
       bounce: false
     });
 
