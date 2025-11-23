@@ -66,9 +66,9 @@ function generateRandomBeast() {
   const baseSpeed = Math.floor((Math.random() * 60 + 40) * multiplier);
   
   const traits = [
-    { trait_type: "Attack", value: baseAttack },
-    { trait_type: "Defense", value: baseDefense },
-    { trait_type: "Speed", value: baseSpeed },
+    { trait_type: "Attack", value: baseAttack.toString() },
+    { trait_type: "Defense", value: baseDefense.toString() },
+    { trait_type: "Speed", value: baseSpeed.toString() },
     { trait_type: "Element", value: element },
     { trait_type: "Tier", value: tier },
     { trait_type: "Type", value: beastType },
@@ -197,7 +197,6 @@ export async function POST(request: NextRequest) {
       name,
       description,
       image: imageIpfsUri,
-      attributes: traits,
     };
 
     const mintRes = await fetch(mintUrl, {
