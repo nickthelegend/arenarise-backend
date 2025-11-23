@@ -21,10 +21,11 @@ const GETGEMS_AUTHORIZATION = process.env.GETGEMS_AUTHORIZATION ?? ""; // token 
 const OWNER_WALLET = process.env.OWNER_ADDRESS ?? ""; // your wallet: 0QBZLTG194NM_...
 
 // Random beast generation data
-const BEAST_TYPES = ['Dragon', 'Phoenix', 'Griffin', 'Hydra', 'Wyvern', 'Basilisk', 'Chimera', 'Manticore'];
-const COLORS = ['Crimson', 'Azure', 'Golden', 'Emerald', 'Shadow', 'Crystal', 'Flame', 'Frost'];
-const ELEMENTS = ['Fire', 'Ice', 'Lightning', 'Earth', 'Wind', 'Dark', 'Light', 'Poison'];
+const BEAST_TYPES = ['Dragon', 'Phoenix', 'Griffin', 'Hydra', 'Wyvern', 'Basilisk', 'Chimera', 'Manticore', 'Sphinx', 'Kraken', 'Leviathan', 'Behemoth', 'Gargoyle', 'Pegasus', 'Unicorn', 'Cerberus', 'Minotaur', 'Banshee'];
+const COLORS = ['Crimson', 'Azure', 'Golden', 'Emerald', 'Shadow', 'Crystal', 'Flame', 'Frost', 'Obsidian', 'Silver', 'Violet', 'Copper', 'Jade', 'Ruby', 'Sapphire', 'Onyx', 'Pearl', 'Amber'];
+const ELEMENTS = ['Fire', 'Ice', 'Lightning', 'Earth', 'Wind', 'Dark', 'Light', 'Poison', 'Arcane', 'Nature', 'Void', 'Spirit', 'Blood', 'Celestial', 'Infernal', 'Temporal'];
 const TIERS = ['Common', 'Rare', 'Epic', 'Legendary', 'Mythic'];
+const ADJECTIVES = ['Ancient', 'Fierce', 'Majestic', 'Ethereal', 'Primal', 'Divine', 'Cursed', 'Noble', 'Savage', 'Mystical', 'Eternal', 'Wrathful'];
 
 function getRandomElement<T>(array: T[]): T {
   return array[Math.floor(Math.random() * array.length)];
@@ -35,25 +36,52 @@ function generateRandomBeast() {
   const color = getRandomElement(COLORS);
   const element = getRandomElement(ELEMENTS);
   const tier = getRandomElement(TIERS);
+  const adjective = getRandomElement(ADJECTIVES);
   
-  const name = `${color} ${beastType}`;
-  const description = `A ${tier.toLowerCase()} ${element.toLowerCase()} beast with incredible power`;
+  // More varied naming patterns
+  const namePatterns = [
+    `${color} ${beastType}`,
+    `${adjective} ${beastType}`,
+    `${element} ${beastType}`,
+    `${color} ${adjective} ${beastType}`,
+    `${beastType} of ${element}`,
+  ];
+  const name = getRandomElement(namePatterns);
   
-  // Generate random stats based on tier
-  const tierMultiplier = TIERS.indexOf(tier) + 1;
-  const baseAttack = Math.floor(Math.random() * 50) + 30;
-  const baseDefense = Math.floor(Math.random() * 50) + 30;
-  const baseSpeed = Math.floor(Math.random() * 50) + 30;
+  const descriptions = [
+    `A ${tier.toLowerCase()} ${element.toLowerCase()} beast with incredible power`,
+    `An ${adjective.toLowerCase()} creature wielding ${element.toLowerCase()} magic`,
+    `A legendary ${beastType.toLowerCase()} infused with ${element.toLowerCase()} energy`,
+    `A ${tier.toLowerCase()} guardian blessed with ${element.toLowerCase()} abilities`,
+    `A ${color.toLowerCase()} ${beastType.toLowerCase()} of ${tier.toLowerCase()} rarity`,
+  ];
+  const description = getRandomElement(descriptions);
+  
+  // Generate random stats based on tier with more variation
+  const tierMultipliers = { Common: 0.8, Rare: 1.0, Epic: 1.3, Legendary: 1.6, Mythic: 2.0 };
+  const multiplier = tierMultipliers[tier as keyof typeof tierMultipliers] || 1.0;
+  
+  const baseAttack = Math.floor((Math.random() * 60 + 40) * multiplier);
+  const baseDefense = Math.floor((Math.random() * 60 + 40) * multiplier);
+  const baseSpeed = Math.floor((Math.random() * 60 + 40) * multiplier);
   
   const traits = [
-    { trait_type: "Attack", value: (baseAttack * tierMultiplier).toString() },
-    { trait_type: "Defense", value: (baseDefense * tierMultiplier).toString() },
-    { trait_type: "Speed", value: (baseSpeed * tierMultiplier).toString() },
+    { trait_type: "Attack", value: baseAttack },
+    { trait_type: "Defense", value: baseDefense },
+    { trait_type: "Speed", value: baseSpeed },
     { trait_type: "Element", value: element },
     { trait_type: "Tier", value: tier },
+    { trait_type: "Type", value: beastType },
   ];
   
-  const prompt = `Create a high-detail pixel art ${color.toLowerCase()} ${beastType.toLowerCase()} with ${element.toLowerCase()} powers. Render a perfect, symmetric side view with detailed scales, vibrant ${color.toLowerCase()} colors, and ${element.toLowerCase()} effects in crisp pixel style. No background, clean lines, majestic ${tier.toLowerCase()} beast.`;
+  // More dynamic and varied prompts
+  const promptStyles = [
+    `Create a high-detail pixel art ${color.toLowerCase()} ${beastType.toLowerCase()} with ${element.toLowerCase()} powers. Perfect side view, detailed textures, vibrant colors, ${element.toLowerCase()} aura effects. No background, crisp pixel style.`,
+    `Render an ${adjective.toLowerCase()} ${beastType.toLowerCase()} in pixel art style. ${color} coloring with ${element.toLowerCase()} elemental magic. Side profile view, intricate details, glowing ${element.toLowerCase()} effects. Clean background.`,
+    `Pixel art ${tier.toLowerCase()} ${beastType.toLowerCase()}: ${color.toLowerCase()} scales/fur with ${element.toLowerCase()} energy. Majestic side view, detailed anatomy, ${element.toLowerCase()} magical aura. High contrast, no background.`,
+    `Design a ${color.toLowerCase()} ${beastType.toLowerCase()} wielding ${element.toLowerCase()} power. Pixel art style, symmetric side view, detailed features, ${element.toLowerCase()} elemental effects. ${tier} tier beast, clean composition.`,
+  ];
+  const prompt = getRandomElement(promptStyles);
   
   return { name, description, traits, prompt };
 }
